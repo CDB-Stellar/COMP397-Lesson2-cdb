@@ -4,70 +4,53 @@ using UnityEngine;
 
 public class PlayerBehaviour : MonoBehaviour
 {
-    public float movementForce;
-    public float jumpForce;
-    public Rigidbody rigidbody;
+    public CharacterController controller;
+    
+    public float maxSpeed = 10f;
+    public float gravity = -30f;
+    public float jumpHeight = 3f;
+
+    public Transform groundCheck;
+    public float groundRadius = 0.5f; //how far from ground
+    public LayerMask groundMask;
     public bool isGrounded;
+
+    public Vector3 velocity;
 
     // Start is called before the first frame update
     void Start()
     {
-        //rigidbody = GetComponent<Rigidbody>(); //another way to make a reference to the rigidbody
+        //controller = GetComponent<CharacterController>(); //one way to get reference
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (isGrounded) //can only move if on the ground
+        isGrounded = Physics.CheckSphere(groundCheck.position, groundRadius, groundMask); //spherecast, where, how far, which mask
+
+        if (isGrounded && velocity.y < 0)
         {
-            //Movement axis scale is from -1 to 1. 
-            if (Input.GetAxisRaw("Horizontal") > 0) //(raw means no smoothing, it's either on or off (-1 or 1))
-            {
-                //move right
-                //rigidbody.AddForce(new Vector3(1f, 0f, 0f) * movementForce); //could write it this way
-                rigidbody.AddForce(Vector3.right * movementForce); //little more convenient 
-                Debug.Log("Moving right");
-            }
-            if (Input.GetAxisRaw("Horizontal") < 0)
-            {
-                //move left
-                rigidbody.AddForce(Vector3.left * movementForce);
-                Debug.Log("Moving left");
-            }
-
-            if (Input.GetAxisRaw("Vertical") > 0) //(raw means no smoothing, it's either on or off (-1 or 1))
-            {
-                //move forward
-                rigidbody.AddForce(Vector3.forward * movementForce);
-            }
-            if (Input.GetAxisRaw("Vertical") < 0)
-            {
-                //move back
-                rigidbody.AddForce(Vector3.back * movementForce);
-            }
-
-            if (Input.GetAxisRaw("Jump") > 0)
-            {
-                rigidbody.AddForce(Vector3.up * jumpForce);
-            }
+            velocity.y = -2f;
         }
+
+        float x = Input.GetAxis("Horizontal");
+        float z = Input.GetAxis("Vertical");
+
+        Vector3 move = transform.right * x + transform.forward * z; //wherever you're looking is forward
+        controller.Move(move * maxSpeed * Time.deltaTime);
+
+        if (Input.GetButton("Jump") && isGrounded) //needs to come before gravity
+        {
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity); 
+        }
+
+        velocity.y += gravity * Time.deltaTime;
+        controller.Move(velocity * Time.deltaTime);
     }
 
-    private void OnCollisionEnter(Collision other) //dont really need this one
+    private void OnDrawGizmos() //help see in the editor only
     {
-        if (other.gameObject.CompareTag("Ground"))
-            isGrounded = true;
-    }
-
-    private void OnCollisionStay(Collision other)
-    {
-        if (other.gameObject.CompareTag("Ground"))
-            isGrounded = true;
-    }
-
-    private void OnCollisionExit(Collision other)
-    {
-        if (other.gameObject.CompareTag("Ground"))
-            isGrounded = false;
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(groundCheck.position, groundRadius);
     }
 }
